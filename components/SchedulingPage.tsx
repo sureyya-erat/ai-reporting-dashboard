@@ -1,9 +1,10 @@
 
 import React, { useState, useEffect } from 'react';
 import { ScheduledReport, Dataset } from '../types';
+import { EmailService } from '../services/emailService';
 import { 
   Calendar, Mail, Clock, Send, Trash, Play, StopCircle, 
-  CheckCircle2, XCircle, ChevronRight, AlertCircle, Sparkles, Bell
+  CheckCircle2, XCircle, ChevronRight, AlertCircle, Sparkles, Bell, RefreshCw, Loader2
 } from 'lucide-react';
 
 interface Props {
@@ -18,6 +19,8 @@ export const SchedulingPage: React.FC<Props> = ({ dataset }) => {
   const [day, setDay] = useState('Pazartesi');
   const [time, setTime] = useState('09:00');
   const [notification, setNotification] = useState<{ type: 'success' | 'error', message: string } | null>(null);
+  const [isTesting, setIsTesting] = useState(false);
+  const [isSending, setIsSending] = useState<string | null>(null);
 
   useEffect(() => {
     const saved = localStorage.getItem(`insightstream_schedules_${dataset.name}`);
@@ -56,7 +59,14 @@ export const SchedulingPage: React.FC<Props> = ({ dataset }) => {
 
   const showNotification = (type: 'success' | 'error', message: string) => {
     setNotification({ type, message });
-    setTimeout(() => setNotification(null), 3000);
+    setTimeout(() => setNotification(null), 5000);
+  };
+
+  const testSmtp = async () => {
+    setIsTesting(true);
+    const result = await EmailService.testSmtpConnection();
+    setIsTesting(false);
+    showNotification(result.success ? 'success' : 'error', result.message);
   };
 
   const toggleReport = (id: string) => {
@@ -70,32 +80,31 @@ export const SchedulingPage: React.FC<Props> = ({ dataset }) => {
     saveToStorage(updated);
   };
 
-  const runNow = (report: ScheduledReport) => {
-    // REAL SMTP CHECK SIMULATION (This would call a real backend /api/email/send)
-    // For this frontend demo, we check if a pseudo-env is set.
-    const isSmtpConfigured = false; // Change to true to simulate configured SMTP
+  const runNow = async (report: ScheduledReport) => {
+    setIsSending(report.id);
+    const summary = `${dataset.summary.rowCount} satır, ${dataset.summary.colCount} sütun analiz edildi.`;
+    const result = await EmailService.sendReport(report, summary);
+    setIsSending(null);
 
-    if (!isSmtpConfigured) {
-      const errorMsg = "SMTP yapılandırması eksik (backend .env kontrol edin). E-posta gönderilemedi.";
-      showNotification('error', errorMsg);
+    if (result.success) {
+      showNotification('success', `${report.email} adresine gerçek rapor gönderildi.`);
+      const updated = reports.map(r => r.id === report.id ? { 
+        ...r, 
+        lastRunAt: Date.now(), 
+        lastStatus: 'SUCCESS' as const,
+        errorMessage: undefined
+      } : r);
+      saveToStorage(updated);
+    } else {
+      showNotification('error', `Gönderim Hatası: ${result.error}`);
       const updated = reports.map(r => r.id === report.id ? { 
         ...r, 
         lastRunAt: Date.now(), 
         lastStatus: 'FAILED' as const,
-        errorMessage: errorMsg
+        errorMessage: result.error
       } : r);
       saveToStorage(updated);
-      return;
     }
-
-    showNotification('success', `${report.email} adresine gerçek rapor gönderildi.`);
-    const updated = reports.map(r => r.id === report.id ? { 
-      ...r, 
-      lastRunAt: Date.now(), 
-      lastStatus: 'SUCCESS' as const,
-      errorMessage: undefined
-    } : r);
-    saveToStorage(updated);
   };
 
   return (
@@ -105,9 +114,19 @@ export const SchedulingPage: React.FC<Props> = ({ dataset }) => {
           <h2 className="text-3xl font-black text-slate-900 tracking-tight uppercase">Zamanlanmış Raporlar</h2>
           <p className="text-slate-500 text-sm">Dashboard verilerini belirli aralıklarla e-posta olarak gönderin.</p>
         </div>
-        <div className="flex items-center gap-2 bg-indigo-50 px-4 py-2 rounded-xl text-indigo-600 border border-indigo-100">
-          <Bell className="w-4 h-4" />
-          <span className="text-xs font-black uppercase tracking-widest">Zamanlama Modülü Aktif</span>
+        <div className="flex gap-4">
+          <button 
+            onClick={testSmtp}
+            disabled={isTesting}
+            className="flex items-center gap-2 bg-white border border-slate-200 px-4 py-2 rounded-xl text-slate-600 font-black uppercase text-[10px] tracking-widest hover:bg-slate-50 transition-all disabled:opacity-50"
+          >
+            {isTesting ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <RefreshCw className="w-3.5 h-3.5" />}
+            SMTP Bağlantısını Test Et
+          </button>
+          <div className="flex items-center gap-2 bg-indigo-50 px-4 py-2 rounded-xl text-indigo-600 border border-indigo-100">
+            <Bell className="w-4 h-4" />
+            <span className="text-xs font-black uppercase tracking-widest">Zamanlama Modülü Aktif</span>
+          </div>
         </div>
       </div>
 
@@ -249,9 +268,10 @@ export const SchedulingPage: React.FC<Props> = ({ dataset }) => {
                     </button>
                     <button 
                       onClick={() => runNow(report)}
-                      className="flex-1 md:flex-none p-3 bg-indigo-50 text-indigo-600 rounded-xl hover:bg-indigo-100 transition-colors"
+                      disabled={isSending === report.id}
+                      className="flex-1 md:flex-none p-3 bg-indigo-50 text-indigo-600 rounded-xl hover:bg-indigo-100 transition-colors disabled:opacity-50"
                     >
-                      <Send className="w-4 h-4" />
+                      {isSending === report.id ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
                     </button>
                     <button 
                       onClick={() => deleteReport(report.id)}
@@ -268,9 +288,9 @@ export const SchedulingPage: React.FC<Props> = ({ dataset }) => {
           <div className="bg-slate-50 border border-slate-100 p-6 rounded-3xl flex gap-4 items-start">
              <AlertCircle className="w-6 h-6 text-indigo-400 shrink-0" />
              <div className="space-y-1">
-               <p className="text-[10px] font-black uppercase text-slate-500">SMTP Yapılandırması Hakkında</p>
+               <p className="text-[10px] font-black uppercase text-slate-500">Önemli: SMTP Yapılandırması</p>
                <p className="text-xs text-slate-400 leading-relaxed italic">
-                 E-posta göndermek için SMTP ayarlarının backend sunucusunda (.env dosyası üzerinden) yapılandırılması gerekir. SMTP ayarları eksikse sistem e-posta gönderemez ve hata döndürür.
+                 E-posta gönderimi için <strong>backend sunucusu (.env)</strong> üzerinde Gmail App Password yapılandırılmalıdır. Ayarlar eksikse rapor gönderimi başarısız olacaktır.
                </p>
              </div>
           </div>

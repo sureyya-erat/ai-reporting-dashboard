@@ -7,10 +7,11 @@ import { Dataset, DataRow, FilterState, SchemaMapping, DashboardTemplate, Pinned
 import { MONTH_ORDER, WEEKDAY_ORDER } from '../constants';
 import { getAIInsights, getChartExplanation } from '../services/gemini';
 import { CalculatedFieldModal } from './CalculatedFieldModal';
+import { ChartBuilderModal } from './ChartBuilderModal';
 import { 
   Printer, Mail, Sparkles, Filter, Settings2,
   X, AlertCircle, RotateCcw, LayoutDashboard, Info, Save, 
-  Lock, Unlock, Bookmark, Trash, Download, PinOff, Loader2, Camera, Calculator, PlayCircle
+  Lock, Unlock, Bookmark, Trash, Download, PinOff, Loader2, Camera, Calculator, PlayCircle, Plus
 } from 'lucide-react';
 
 interface Props {
@@ -23,6 +24,7 @@ export const Dashboard: React.FC<Props> = ({ dataset, onBack, onStartTour }) => 
   const [activeMapping, setActiveMapping] = useState<SchemaMapping>(dataset.mapping);
   const [showMapper, setShowMapper] = useState(false);
   const [showCalcModal, setShowCalcModal] = useState(false);
+  const [showBuilderModal, setShowBuilderModal] = useState(false);
   const [isLocked, setIsLocked] = useState(false);
   const [templates, setTemplates] = useState<DashboardTemplate[]>([]);
   const [pinnedCharts, setPinnedCharts] = useState<PinnedChart[]>([]);
@@ -56,6 +58,19 @@ export const Dashboard: React.FC<Props> = ({ dataset, onBack, onStartTour }) => 
     setCalculatedFields(updated);
     localStorage.setItem(`insightstream_calc_fields_${dataset.name}`, JSON.stringify(updated));
     setShowCalcModal(false);
+  };
+
+  const handleSaveCustomChart = (chart: PinnedChart) => {
+    const updated = [...pinnedCharts, chart];
+    setPinnedCharts(updated);
+    const storageKey = `insightstream_pinned_${dataset.name}`;
+    localStorage.setItem(storageKey, JSON.stringify(updated));
+    setShowBuilderModal(false);
+    
+    // Yeni eklenen grafiğe odaklanmak için sona kaydır
+    setTimeout(() => {
+        window.scrollTo({ top: document.body.scrollHeight, behavior: 'smooth' });
+    }, 100);
   };
 
   const removeCalcField = (id: string) => {
@@ -191,6 +206,11 @@ export const Dashboard: React.FC<Props> = ({ dataset, onBack, onStartTour }) => 
     } finally { setAiLoading(false); }
   };
 
+  const handlePrint = (e: React.MouseEvent) => {
+    e.preventDefault();
+    window.print();
+  };
+
   const MultiSelectSlicer = ({ title, options, selected, onToggle, onClear }: any) => (
     <div className="pb-6 border-b border-slate-100 last:border-0 space-y-3">
       <div className="flex justify-between items-center">
@@ -273,10 +293,11 @@ export const Dashboard: React.FC<Props> = ({ dataset, onBack, onStartTour }) => 
             </div>
           </div>
           <div className="flex gap-2">
+            <button onClick={() => setShowBuilderModal(true)} className="bg-emerald-600 text-white px-4 py-2 rounded-xl text-xs font-black uppercase tracking-widest flex items-center gap-2 hover:bg-emerald-700 shadow-lg shadow-emerald-100"><Plus className="w-4 h-4" /> Grafik Ekle</button>
             <button onClick={onStartTour} title="Tur Başlat" className="bg-indigo-600 text-white px-4 py-2 rounded-xl text-xs font-black uppercase tracking-widest flex items-center gap-2 hover:bg-indigo-700 shadow-lg shadow-indigo-100"><PlayCircle className="w-4 h-4" /> Rehber Tur</button>
             <button onClick={saveSnapshot} title="Görünümü Kaydet" className="bg-indigo-50 border border-indigo-100 px-4 py-2 rounded-xl text-xs font-black uppercase tracking-widest text-indigo-600 hover:bg-indigo-100 transition-all flex items-center gap-2"><Camera className="w-4 h-4" /> Snapshot</button>
             <button onClick={saveTemplate} title="Şablonu Kaydet" className="bg-white border border-slate-200 px-4 py-2 rounded-xl text-xs font-black uppercase tracking-widest text-slate-400 hover:bg-slate-50"><Bookmark className="w-4 h-4" /></button>
-            <button onClick={() => window.print()} className="bg-white border border-slate-200 px-4 py-2 rounded-xl text-xs font-black uppercase tracking-widest flex items-center gap-2"><Printer className="w-4 h-4" /> Yazdır</button>
+            <button type="button" onClick={handlePrint} className="bg-white border border-slate-200 px-4 py-2 rounded-xl text-xs font-black uppercase tracking-widest flex items-center gap-2 transition-all hover:bg-slate-50 active:scale-95"><Printer className="w-4 h-4" /> Yazdır</button>
           </div>
         </header>
 
@@ -340,12 +361,12 @@ export const Dashboard: React.FC<Props> = ({ dataset, onBack, onStartTour }) => 
 
           <div data-tour="charts" className="grid grid-cols-1 lg:grid-cols-12 gap-8">
             <div className="lg:col-span-12">
-              <BIChart onExplain={handleExplainChart} title="AYLIK KÂR + 6 AY TAHMİNLEME" type="line" data={chartData.forecast} height={400} />
+              <BIChart id="monthly-profit" datasetId={dataset.name} onExplain={handleExplainChart} title="AYLIK KÂR + 6 AY TAHMİNLEME" type="line" data={chartData.forecast} height={400} />
             </div>
             
             <div className="lg:col-span-6">
               <div className="h-full flex flex-col">
-                <BIChart onExplain={handleExplainChart} title="KATEGORİYE GÖRE İŞLEM SAYISI" type="bar" data={chartData.categoryTx} layout="vertical" height={400} />
+                <BIChart id="category-tx" datasetId={dataset.name} onExplain={handleExplainChart} title="KATEGORİYE GÖRE İŞLEM SAYISI" type="bar" data={chartData.categoryTx} layout="vertical" height={400} />
                 <div className="mt-2 px-6 py-2 bg-slate-50 rounded-xl border border-slate-100 flex items-center justify-between no-print">
                    <p className="text-[9px] font-bold text-slate-400 uppercase">Toplam İşlem: {kpis.txns} | DISTINCT Sayım Aktif</p>
                    <Info className="w-3 h-3 text-slate-300" />
@@ -355,21 +376,21 @@ export const Dashboard: React.FC<Props> = ({ dataset, onBack, onStartTour }) => 
             
             <div className="lg:col-span-6">
               {chartData.priceQtyBubble.isFallback ? (
-                <BIChart onExplain={handleExplainChart} title="KATEGORİ BAZLI CİRO (ALTERNATİF)" type="bar" data={chartData.priceQtyBubble.fallbackData} height={400} />
+                <BIChart id="price-bubble" datasetId={dataset.name} onExplain={handleExplainChart} title="KATEGORİ BAZLI CİRO (ALTERNATİF)" type="bar" data={chartData.priceQtyBubble.fallbackData} height={400} />
               ) : (
-                <BIChart onExplain={handleExplainChart} title="FİYAT x MİKTAR İLİŞKİSİ (BALON = TOPLAM KÂR)" type="scatter" data={chartData.priceQtyBubble.data} height={400} />
+                <BIChart id="price-bubble" datasetId={dataset.name} onExplain={handleExplainChart} title="FİYAT x MİKTAR İLİŞKİSİ (BALON = TOPLAM KÂR)" type="scatter" data={chartData.priceQtyBubble.data} height={400} />
               )}
             </div>
 
             <div className="lg:col-span-8">
-              <BIChart onExplain={handleExplainChart} title="ŞUBE BAZLI CİRO (İLK 10)" type="bar" data={chartData.branchRev} height={400} />
+              <BIChart id="branch-rev" datasetId={dataset.name} onExplain={handleExplainChart} title="ŞUBE BAZLI CİRO (İLK 10)" type="bar" data={chartData.branchRev} height={400} />
             </div>
             <div className="lg:col-span-4">
-              <BIChart onExplain={handleExplainChart} title="PARETO: KATEGORİ CİRO DAĞILIMI" type="bar" data={chartData.pareto} secondaryDataKey="cumulativePercent" height={400} />
+              <BIChart id="pareto-cat" datasetId={dataset.name} onExplain={handleExplainChart} title="PARETO: KATEGORİ CİRO DAĞILIMI" type="bar" data={chartData.pareto} secondaryDataKey="cumulativePercent" height={400} />
             </div>
             
             <div className="lg:col-span-12">
-              <BIChart onExplain={handleExplainChart} title="HAFTALIK KÂR PERFORMANSI" type="bar" data={chartData.weekdayProfit} height={300} />
+              <BIChart id="weekday-profit" datasetId={dataset.name} onExplain={handleExplainChart} title="HAFTALIK KÂR PERFORMANSI" type="bar" data={chartData.weekdayProfit} height={300} />
             </div>
           </div>
 
@@ -378,7 +399,7 @@ export const Dashboard: React.FC<Props> = ({ dataset, onBack, onStartTour }) => 
                <div className="flex items-center justify-between border-b border-slate-200 pb-4">
                   <div className="flex items-center gap-3">
                     <div className="w-1.5 h-6 bg-indigo-600 rounded-full"></div>
-                    <h2 className="text-xl font-black text-slate-900 uppercase tracking-tight">Sohbetten Eklenen Grafikler</h2>
+                    <h2 className="text-xl font-black text-slate-900 uppercase tracking-tight">Kişiselleştirilmiş / Pinlenmiş Grafikler</h2>
                   </div>
                   <button onClick={clearAllPinned} className="text-[10px] font-black uppercase text-slate-400 hover:text-rose-500 transition-colors flex items-center gap-2 no-print">
                     <PinOff className="w-3 h-3" /> Tümünü Kaldır
@@ -387,7 +408,7 @@ export const Dashboard: React.FC<Props> = ({ dataset, onBack, onStartTour }) => 
                <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
                   {pinnedCharts.map(pc => (
                     <div key={pc.id} className="relative group">
-                      <BIChart onExplain={handleExplainChart} title={pc.title} type={pc.type} data={pc.data} height={250} />
+                      <BIChart id={pc.id} datasetId={dataset.name} onExplain={handleExplainChart} title={pc.title} type={pc.type} data={pc.data} height={250} />
                       <button 
                         onClick={() => removePinned(pc.id)}
                         className="absolute top-4 right-4 p-2 bg-white/80 backdrop-blur shadow-sm rounded-lg text-slate-400 hover:text-rose-500 opacity-0 group-hover:opacity-100 transition-all no-print"
@@ -408,6 +429,15 @@ export const Dashboard: React.FC<Props> = ({ dataset, onBack, onStartTour }) => 
           dataset={dataset} 
           onSave={handleSaveCalcField} 
           onClose={() => setShowCalcModal(false)} 
+        />
+      )}
+
+      {showBuilderModal && (
+        <ChartBuilderModal 
+          dataset={dataset} 
+          calculatedFields={calculatedFields}
+          onSave={handleSaveCustomChart} 
+          onClose={() => setShowBuilderModal(false)} 
         />
       )}
 

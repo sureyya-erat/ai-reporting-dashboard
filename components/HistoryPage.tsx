@@ -40,6 +40,12 @@ export const HistoryPage: React.FC<Props> = ({ dataset, onApplyFilters }) => {
     setRecords(prev => prev.map(r => r.id === id ? { ...r, pinned: !r.pinned } : r));
   };
 
+  const handlePrint = (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    window.print();
+  };
+
   const getTypeIcon = (type: string) => {
     switch (type) {
       case 'chat': return <MessageSquare className="w-4 h-4" />;
@@ -145,8 +151,8 @@ export const HistoryPage: React.FC<Props> = ({ dataset, onApplyFilters }) => {
       {/* DETAIL MODAL */}
       {selectedRecord && (
         <div className="fixed inset-0 z-[200] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm no-print animate-in fade-in duration-300">
-          <div className="bg-white w-full max-w-4xl rounded-[2.5rem] shadow-2xl overflow-hidden flex flex-col max-h-[90vh] animate-in slide-in-from-bottom-8 duration-500">
-            <div className="p-6 sm:p-8 bg-indigo-600 text-white flex justify-between items-center shrink-0">
+          <div className="bg-white w-full max-w-4xl rounded-[2.5rem] shadow-2xl overflow-hidden flex flex-col max-h-[90vh] animate-in slide-in-from-bottom-8 duration-500 print:shadow-none print:w-full print:max-w-none print:max-h-none print:static">
+            <div className="p-6 sm:p-8 bg-indigo-600 text-white flex justify-between items-center shrink-0 no-print">
               <div className="flex items-center gap-3">
                 <div className="p-2 bg-white/20 rounded-xl">{getTypeIcon(selectedRecord.type)}</div>
                 <div>
@@ -155,18 +161,18 @@ export const HistoryPage: React.FC<Props> = ({ dataset, onApplyFilters }) => {
                 </div>
               </div>
               <div className="flex gap-2">
-                <button onClick={() => window.print()} className="p-3 bg-white/10 hover:bg-white/20 rounded-xl transition-colors"><Printer className="w-5 h-5" /></button>
+                <button type="button" onClick={handlePrint} className="p-3 bg-white/10 hover:bg-white/20 rounded-xl transition-all active:scale-95 shadow-sm"><Printer className="w-5 h-5" /></button>
                 <button onClick={() => setSelectedRecord(null)} className="p-3 bg-white/10 hover:bg-white/20 rounded-xl transition-colors"><X className="w-5 h-5" /></button>
               </div>
             </div>
 
-            <div id="printable-analysis" className="flex-1 overflow-y-auto p-8 space-y-8 print:p-0">
-              <div className="flex flex-col md:flex-row md:items-center justify-between border-b border-slate-100 pb-6 gap-4">
+            <div id="printable-analysis" className="flex-1 overflow-y-auto p-8 space-y-8 print:p-0 print:overflow-visible print:block">
+              <div className="flex flex-col md:flex-row md:items-center justify-between border-b border-slate-100 pb-6 gap-4 print:border-slate-200">
                 <div className="space-y-1">
                   <p className="text-[10px] font-black uppercase text-slate-400 tracking-widest">Analiz Tarihi</p>
                   <p className="font-bold text-slate-700">{new Date(selectedRecord.createdAt).toLocaleString('tr-TR')}</p>
                 </div>
-                <div className="flex gap-4">
+                <div className="flex gap-4 no-print">
                   <button 
                     onClick={() => { onApplyFilters(selectedRecord.filterStateSnapshot); setSelectedRecord(null); }}
                     className="flex items-center gap-2 px-6 py-2.5 bg-indigo-50 text-indigo-600 rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-indigo-100 transition-colors"
@@ -179,12 +185,12 @@ export const HistoryPage: React.FC<Props> = ({ dataset, onApplyFilters }) => {
               <div className="space-y-6">
                 {selectedRecord.type === 'chat' && (
                   <div className="space-y-6">
-                    <div className="bg-slate-50 p-6 rounded-3xl border border-slate-100">
+                    <div className="bg-slate-50 p-6 rounded-3xl border border-slate-100 print:bg-white print:border-slate-200">
                       <p className="text-[10px] font-black uppercase text-indigo-400 mb-2">AI Analiz Yanıtı</p>
                       <p className="text-sm font-bold text-slate-700 leading-relaxed">{selectedRecord.payload.content}</p>
                     </div>
                     {selectedRecord.payload.data && (
-                      <div className="bg-white p-6 rounded-[2.5rem] border border-slate-100 shadow-sm">
+                      <div className="bg-white p-6 rounded-[2.5rem] border border-slate-100 shadow-sm print:border-slate-200 print:shadow-none">
                         <BIChart 
                           title={selectedRecord.titleTR} 
                           type={selectedRecord.payload.plan?.chart || 'bar'} 
@@ -199,16 +205,16 @@ export const HistoryPage: React.FC<Props> = ({ dataset, onApplyFilters }) => {
                 {selectedRecord.type === 'simulation' && (
                   <div className="space-y-8">
                      <div className="grid grid-cols-2 gap-4">
-                        <div className="bg-indigo-50 p-6 rounded-3xl border border-indigo-100 text-center">
+                        <div className="bg-indigo-50 p-6 rounded-3xl border border-indigo-100 text-center print:bg-white print:border-slate-200">
                           <p className="text-[10px] font-black uppercase text-indigo-400 mb-1">Ciro Değişimi</p>
                           <p className="text-2xl font-black text-indigo-600">₺{selectedRecord.payload.scenario.revenue.toLocaleString()}</p>
                         </div>
-                        <div className="bg-emerald-50 p-6 rounded-3xl border border-emerald-100 text-center">
+                        <div className="bg-emerald-50 p-6 rounded-3xl border border-emerald-100 text-center print:bg-white print:border-slate-200">
                           <p className="text-[10px] font-black uppercase text-emerald-400 mb-1">Kâr Değişimi</p>
                           <p className="text-2xl font-black text-emerald-600">₺{selectedRecord.payload.scenario.profit.toLocaleString()}</p>
                         </div>
                      </div>
-                     <div className="bg-white p-6 rounded-[2.5rem] border border-slate-100 shadow-sm">
+                     <div className="bg-white p-6 rounded-[2.5rem] border border-slate-100 shadow-sm print:border-slate-200 print:shadow-none">
                         <BIChart 
                           title="Simülasyon Karşılaştırması" 
                           type="bar" 
@@ -225,15 +231,15 @@ export const HistoryPage: React.FC<Props> = ({ dataset, onApplyFilters }) => {
                 )}
 
                 {(selectedRecord.type === 'insight' || selectedRecord.type === 'recommendation') && (
-                  <div className="bg-slate-50 p-8 rounded-[2.5rem] border border-slate-100">
+                  <div className="bg-slate-50 p-8 rounded-[2.5rem] border border-slate-100 print:bg-white print:border-slate-200">
                     <p className="text-sm font-bold text-slate-700 leading-loose whitespace-pre-line">{selectedRecord.payload.text}</p>
                   </div>
                 )}
 
                 {selectedRecord.type === 'dashboard_snapshot' && (
-                  <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                  <div className="grid grid-cols-2 md:grid-cols-4 gap-4 print:grid-cols-2">
                      {Object.entries(selectedRecord.payload.kpis).map(([key, val]: any) => (
-                       <div key={key} className="bg-white p-4 rounded-2xl border border-slate-100 text-center">
+                       <div key={key} className="bg-white p-4 rounded-2xl border border-slate-100 text-center print:border-slate-200">
                          <p className="text-[9px] font-black uppercase text-slate-400 mb-1">{key}</p>
                          <p className="text-lg font-black text-indigo-600">{val.toLocaleString()}</p>
                        </div>
@@ -255,7 +261,6 @@ export const HistoryPage: React.FC<Props> = ({ dataset, onApplyFilters }) => {
           <div className="p-8">
             <h1 className="text-2xl font-black uppercase mb-2">{selectedRecord.titleTR}</h1>
             <p className="text-slate-500 mb-8">{new Date(selectedRecord.createdAt).toLocaleString('tr-TR')} - {dataset.name}</p>
-            {/* Logic similar to modal content but simplified for print */}
             <div className="space-y-8">
                {selectedRecord.type === 'chat' && <p className="font-bold">{selectedRecord.payload.content}</p>}
                {selectedRecord.type === 'insight' && <p className="whitespace-pre-line">{selectedRecord.payload.text}</p>}

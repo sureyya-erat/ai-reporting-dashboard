@@ -11,15 +11,53 @@
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/driver.js@1.0.1/dist/driver.css"/>
     <style>
         @media print {
+            /* Gereksiz UI öğelerini gizle */
             .no-print { display: none !important; }
-            .print-only { display: block !important; }
-            body { padding: 0 !important; margin: 0 !important; background: white !important; overflow: visible !important; }
-            .chart-container { page-break-inside: avoid; margin-bottom: 2rem; border: 1px solid #e2e8f0 !important; box-shadow: none !important; }
-            main, .max-w-4xl, .max-w-6xl { max-width: 100% !important; width: 100% !important; padding: 0 !important; margin: 0 !important; }
+            header, nav, aside, button { display: none !important; }
+            
+            /* Sayfa yapısını baskı için normalize et */
+            body, html { 
+                background: white !important; 
+                color: black !important;
+                height: auto !important;
+                overflow: visible !important;
+                padding: 0 !important;
+                margin: 0 !important;
+            }
+            
+            #root { 
+                height: auto !important; 
+                overflow: visible !important; 
+            }
+
+            /* Dashboard ve Modal layout sorunlarını düzelt */
+            .min-h-screen { min-height: 0 !important; }
+            .sticky, .fixed { position: relative !important; top: 0 !important; }
+            .overflow-y-auto { overflow: visible !important; height: auto !important; }
+            
+            /* Grafiklerin sayfa ortasında bölünmesini engelle */
+            .chart-container, .bg-white { 
+                page-break-inside: avoid; 
+                break-inside: avoid;
+                margin-bottom: 2rem;
+                box-shadow: none !important;
+                border: 1px solid #eee !important;
+            }
+
+            /* Responsive grid'i baskı için dikey yap */
             .grid { display: block !important; }
-            .grid > div { margin-bottom: 2rem !important; }
-            header, nav, aside { display: none !important; }
+            .grid > div { width: 100% !important; margin-bottom: 20px !important; }
+
+            /* Sadece belirli alanları yazdırmak için yardımcı sınıflar */
+            .print-only { display: block !important; }
+            
+            /* Animasyonları durdur */
+            * { 
+                animation: none !important; 
+                transition: none !important; 
+            }
         }
+        
         .print-only { display: none; }
         
         /* Tur baloncuğu özelleştirme */
